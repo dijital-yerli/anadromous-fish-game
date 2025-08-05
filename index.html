@@ -40,7 +40,6 @@
             height: 100%;
             display: flex;
             flex-direction: column;
-            justify-content: center;
             align-items: center;
             background-color: rgba(0, 0, 0, 0.7);
             color: white;
@@ -51,7 +50,14 @@
             overflow-y: auto; /* İçerik taşarsa kaydırma çubuğu */
         }
         
-        #gameOverScreen, #levelCompleteScreen, #howToPlayScreen {
+        /* Sadece howToPlayScreen için dikey hizalamayı ve üst boşluğu ayarla */
+        #howToPlayScreen {
+            justify-content: flex-start; /* İçeriği yukarı hizala */
+            padding-top: 60px; /* Üstten daha fazla boşluk bırakıldı */
+            padding-bottom: 60px; /* Alt boşluk da eklendi */
+        }
+
+        #gameOverScreen, #levelCompleteScreen {
             display: none;
         }
         
@@ -73,8 +79,8 @@
         }
 
         #howToPlayScreen h1, #howToPlayScreen h2 {
-            margin-top: 10px;
-            margin-bottom: 10px;
+            margin-top: 0; /* Üst marj sıfırlandı */
+            margin-bottom: 20px; /* Alt marj artırıldı */
         }
 
         #howToPlayScreen p, #howToPlayScreen ul {
@@ -91,6 +97,12 @@
             color: white;
             font-size: 18px;
             z-index: 5;
+            /* HUD için yapılan düzeltmeler */
+            width: 200px; /* HUD'a daha da geniş bir sabit genişlik ver */
+            padding: 10px 20px; /* Üst/alt ve sağ/sol boşlukları ayarla */
+            box-sizing: border-box; /* Padding'in genişliğe dahil olmasını sağla */
+            background-color: rgba(0, 0, 0, 0.3); /* Geçici olarak arka plan rengi ekle */
+            border-radius: 8px; /* Köşeleri yuvarla */
         }
         
         #progressBar {
@@ -685,7 +697,7 @@
                         updateHUD();
                     }
                 }
-            }
+            });
         }
         
         // Düşmanları güncelle
