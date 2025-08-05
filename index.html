@@ -1,0 +1,1086 @@
+platfo<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yukarıya Yolculuk: Anadrom Balıkların Göçü</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(to bottom, #1a2a6c, #b21f1f, #fdbb2d);
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+        }
+        
+        #gameContainer {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            border: 4px solid #2c3e50;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+        
+        #gameCanvas {
+            background-color: #3498db;
+            display: block;
+        }
+        
+        #startScreen, #gameOverScreen, #levelCompleteScreen, #howToPlayScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            z-index: 10;
+            padding: 20px; /* İçerik için boşluk */
+            box-sizing: border-box; /* Padding'in genişliğe dahil olması için */
+            text-align: center; /* Metni ortala */
+            overflow-y: auto; /* İçerik taşarsa kaydırma çubuğu */
+        }
+        
+        #gameOverScreen, #levelCompleteScreen, #howToPlayScreen {
+            display: none;
+        }
+        
+        button {
+            padding: 12px 24px;
+            margin-top: 20px;
+            font-size: 18px;
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            background-color: #c0392b;
+            transform: scale(1.05);
+        }
+
+        #howToPlayScreen h1, #howToPlayScreen h2 {
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+
+        #howToPlayScreen p, #howToPlayScreen ul {
+            max-width: 600px; /* Metin genişliğini sınırlayın */
+            text-align: left; /* Metni sola hizala */
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+        
+        #hud {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 18px;
+            z-index: 5;
+        }
+        
+        #progressBar {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            height: 20px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            overflow: hidden;
+            z-index: 5;
+        }
+        
+        #progressFill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(to right, #f39c12, #f1c40f);
+            transition: width 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <div id="hud">
+            <div>Can: <span id="health">3</span></div>
+            <div>Skor: <span id="score">0</span></div>
+            <div>Seviye: <span id="level">1</span></div>
+        </div>
+        
+        <div id="progressBar">
+            <div id="progressFill"></div>
+        </div>
+        
+        <div id="startScreen">
+            <h1>Yukarıya Yolculuk</h1>
+            <h2>Anadrom Balıkların Göçü</h2>
+            <p>Doğduğun nehre geri dön ve neslini devam ettir!</p>
+            <button id="startButton">Başla</button>
+            <button id="howToPlayButton">Nasıl Oynanır?</button> <!-- Yeni buton -->
+        </div>
+        
+        <div id="gameOverScreen">
+            <h1>Göç Başarısız Oldu</h1>
+            <p>Skorun: <span id="finalScore">0</span></p>
+            <p>Ulaştığın Seviye: <span id="finalLevel">1</span></p>
+            <button id="restartButton">Yeniden Dene</button>
+        </div>
+        
+        <div id="levelCompleteScreen">
+            <h1>Tebrikler!</h1>
+            <h2>Seviye <span id="completedLevel">1</span> Tamamlandı</h2>
+            <p>Toplam Skor: <span id="currentScore">0</span></p>
+            <button id="nextLevelButton">Sonraki Seviye</button>
+        </div>
+
+        <!-- Yeni Nasıl Oynanır Ekranı -->
+        <div id="howToPlayScreen">
+            <div id="howToPlayContent">
+                <!-- Nasıl Oynanır metni buraya JS ile yüklenecek -->
+            </div>
+            <button id="backButton">Geri</button>
+        </div>
+    </div>
+
+    <audio id="backgroundMusic" loop>
+        <source src="https://assets.mixkit.co/music/preview/mixkit-game-show-suspense-waiting-668.mp3" type="audio/mpeg">
+    </audio>
+    
+    <audio id="jumpSound">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-quick-jump-arcade-game-239.mp3" type="audio/mpeg">
+    </audio>
+    
+    <audio id="collectSound">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3" type="type/mpeg">
+    </audio>
+    
+    <audio id="hitSound">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-explosion-2759.mp3" type="audio/mpeg">
+    </audio>
+    
+    <audio id="levelCompleteSound">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        // Oyun değişkenleri
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const levelCompleteScreen = document.getElementById('levelCompleteScreen');
+        const howToPlayScreen = document.getElementById('howToPlayScreen'); // Yeni
+        const howToPlayContent = document.getElementById('howToPlayContent'); // Yeni
+
+        const startButton = document.getElementById('startButton');
+        const howToPlayButton = document.getElementById('howToPlayButton'); // Yeni
+        const backButton = document.getElementById('backButton'); // Yeni
+        const restartButton = document.getElementById('restartButton');
+        const nextLevelButton = document.getElementById('nextLevelButton');
+        const healthDisplay = document.getElementById('health');
+        const scoreDisplay = document.getElementById('score');
+        const levelDisplay = document.getElementById('level');
+        const finalScoreDisplay = document.getElementById('finalScore');
+        const finalLevelDisplay = document.getElementById('finalLevel');
+        const completedLevelDisplay = document.getElementById('completedLevel');
+        const currentScoreDisplay = document.getElementById('currentScore');
+        const progressFill = document.getElementById('progressFill');
+        
+        // Ses elementleri
+        const backgroundMusic = document.getElementById('backgroundMusic');
+        const jumpSound = document.getElementById('jumpSound');
+        const collectSound = document.getElementById('collectSound');
+        const hitSound = document.getElementById('hitSound');
+        const levelCompleteSound = document.getElementById('levelCompleteSound');
+        
+        // Oyun durumu
+        let gameRunning = false;
+        let score = 0;
+        let health = 3;
+        let level = 1;
+        let progress = 0;
+        let gameSpeed = 3;
+        
+        // Oyuncu balık
+        const player = {
+            x: 100,
+            y: canvas.height / 2,
+            width: 40,
+            height: 30,
+            speed: 5,
+            dy: 0,
+            gravity: 0.2,
+            jumpPower: -8,
+            isJumping: false,
+            direction: 1, // 1 sağa, -1 sola
+            color: '#e74c3c',
+            swimFrame: 0 // Yüzme animasyonu için yeni değişken
+        };
+        
+        // Oyun nesneleri
+        let platforms = [];
+        let obstacles = [];
+        let enemies = [];
+        let collectibles = [];
+        let backgroundElements = [];
+        let waterBubbles = [];
+        
+        // Klavye durumu
+        const keys = {
+            ArrowLeft: false,
+            ArrowRight: false,
+            ArrowUp: false,
+            Space: false
+        };
+        
+        // Fare/tıklama olayları
+        canvas.addEventListener('click', () => {
+            if (gameRunning) {
+                jump();
+            }
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.code in keys) {
+                keys[e.code] = true;
+                
+                if (e.code === 'ArrowUp' || e.code === 'Space') {
+                    jump();
+                }
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            if (e.code in keys) {
+                keys[e.code] = false;
+            }
+        });
+        
+        // Zıplama fonksiyonu
+        function jump() {
+            if (!player.isJumping && gameRunning) {
+                player.dy = player.jumpPower;
+                player.isJumping = true;
+                jumpSound.currentTime = 0;
+                jumpSound.play();
+            }
+        }
+        
+        // Oyunu başlat
+        startButton.addEventListener('click', () => {
+            startScreen.style.display = 'none';
+            initGame();
+            gameRunning = true;
+            backgroundMusic.volume = 0.3;
+            backgroundMusic.play();
+            gameLoop();
+        });
+
+        // Nasıl Oynanır butonuna tıklandığında
+        howToPlayButton.addEventListener('click', () => {
+            startScreen.style.display = 'none';
+            howToPlayScreen.style.display = 'flex';
+            backgroundMusic.pause(); // Müziği duraklat
+        });
+
+        // Geri butonuna tıklandığında
+        backButton.addEventListener('click', () => {
+            howToPlayScreen.style.display = 'none';
+            startScreen.style.display = 'flex';
+            backgroundMusic.play(); // Müziği devam ettir
+        });
+        
+        // Yeniden başlat
+        restartButton.addEventListener('click', () => {
+            gameOverScreen.style.display = 'none';
+            initGame();
+            gameRunning = true;
+            backgroundMusic.currentTime = 0;
+            backgroundMusic.play();
+            gameLoop();
+        });
+        
+        // Sonraki seviye
+        nextLevelButton.addEventListener('click', () => {
+            levelCompleteScreen.style.display = 'none';
+            level++;
+            levelDisplay.textContent = level;
+            initGame();
+            gameRunning = true;
+            backgroundMusic.currentTime = 0;
+            backgroundMusic.play();
+            gameLoop();
+        });
+        
+        // Oyunu başlangıç durumuna getir
+        function initGame() {
+            score = 0;
+            health = 3;
+            progress = 0;
+            gameSpeed = 3 + level * 0.5;
+            
+            player.x = 100;
+            player.y = canvas.height / 2;
+            player.dy = 0;
+            player.isJumping = false;
+            player.swimFrame = 0; // Animasyon çerçevesini sıfırla
+            
+            platforms = [];
+            obstacles = [];
+            enemies = [];
+            collectibles = [];
+            backgroundElements = [];
+            waterBubbles = [];
+            
+            // Başlangıç platformları oluştur
+            createPlatforms();
+            
+            // Arka plan elementleri ekle
+            createBackgroundElements();
+            
+            // HUD'u güncelle
+            updateHUD();
+        }
+        
+        // Platform oluştur
+        function createPlatforms() {
+            // Nehir yatağı (alt platform)
+            platforms.push({
+                x: 0,
+                y: canvas.height - 20,
+                width: canvas.width * 3,
+                height: 20,
+                color: '#8B4513'
+            });
+            
+            // Şelaleler ve engeller
+            for (let i = 0; i < 5 + level * 2; i++) {
+                const height = 100 + Math.random() * 100;
+                const width = 50 + Math.random() * 100;
+                const gap = 150 + Math.random() * 100;
+                
+                platforms.push({
+                    x: 500 + i * 400 + Math.random() * 200,
+                    y: canvas.height - height,
+                    width: width,
+                    height: height,
+                    color: '#8B4513'
+                });
+                
+                // Şelale engeli
+                obstacles.push({
+                    x: 500 + i * 400 + Math.random() * 200 + width,
+                    y: canvas.height - height,
+                    width: 30,
+                    height: height,
+                    type: 'waterfall',
+                    color: '#1E90FF'
+                });
+                
+                // Üstteki rm
+                platforms.push({
+                    x: 500 + i * 400 + Math.random() * 200 + width + 30,
+                    y: canvas.height - height - gap,
+                    width: width,
+                    height: gap,
+                    color: '#8B4513'
+                });
+            }
+            
+            // Toplanabilir nesneler oluştur
+            for (let i = 0; i < 10 + level * 3; i++) {
+                collectibles.push({
+                    x: 300 + Math.random() * (canvas.width * 3 - 300),
+                    y: 50 + Math.random() * (canvas.height - 150),
+                    radius: 10 + Math.random() * 10,
+                    type: Math.random() > 0.7 ? 'powerup' : 'food',
+                    color: Math.random() > 0.7 ? '#FFD700' : '#2ECC71'
+                });
+            }
+            
+            // Düşmanlar oluştur
+            for (let i = 0; i < 3 + level; i++) {
+                enemies.push({
+                    x: 500 + Math.random() * (canvas.width * 3 - 500),
+                    y: 50 + Math.random() * (canvas.height - 150),
+                    width: 40,
+                    height: 40,
+                    speed: 1 + Math.random() * level * 0.5,
+                    type: Math.random() > 0.5 ? 'bird' : 'bear',
+                    direction: Math.random() > 0.5 ? 1 : -1,
+                    frame: 0,
+                    animationSpeed: 5,
+                    verticalOffset: 0 // Ayı için yeni animasyon değişkeni
+                });
+            }
+        }
+        
+        // Arka plan elementleri oluştur
+        function createBackgroundElements() {
+            // Bulutlar
+            for (let i = 0; i < 5; i++) {
+                backgroundElements.push({
+                    x: Math.random() * canvas.width * 3,
+                    y: Math.random() * 100,
+                    width: 80 + Math.random() * 100,
+                    height: 40 + Math.random() * 40,
+                    speed: 0.2 + Math.random() * 0.3,
+                    type: 'cloud',
+                    color: 'rgba(255, 255, 255, 0.8)'
+                });
+            }
+            
+            // Bitkiler
+            for (let i = 0; i < 20; i++) {
+                backgroundElements.push({
+                    x: Math.random() * canvas.width * 3,
+                    y: canvas.height - 20 - Math.random() * 50,
+                    width: 10 + Math.random() * 20,
+                    height: 20 + Math.random() * 50,
+                    speed: 0,
+                    type: 'plant',
+                    color: `hsl(${Math.random() * 60 + 80}, 70%, 40%)`
+                });
+            }
+            
+            // Su kabarcıkları
+            for (let i = 0; i < 30; i++) {
+                waterBubbles.push({
+                    x: Math.random() * canvas.width * 3,
+                    y: canvas.height - Math.random() * canvas.height,
+                    radius: 2 + Math.random() * 5,
+                    speed: 0.5 + Math.random() * 1,
+                    opacity: 0.3 + Math.random() * 0.7
+                });
+            }
+        }
+        
+        // Çarpışma kontrolü
+        function checkCollision(rect1, rect2) {
+            return (
+                rect1.x < rect2.x + rect2.width &&
+                rect1.x + rect1.width > rect2.x &&
+                rect1.y < rect2.y + rect2.height &&
+                rect1.y + rect1.height > rect2.y
+            );
+        }
+        
+        // HUD'u güncelle
+        function updateHUD() {
+            healthDisplay.textContent = health;
+            scoreDisplay.textContent = score;
+            levelDisplay.textContent = level;
+            progressFill.style.width = `${progress}%`;
+        }
+        
+        // Oyun döngüsü
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            // Temizle
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Arka planı çiz
+            drawBackground();
+            
+            // Platformları çiz ve güncelle
+            updatePlatforms();
+            
+            // Engelleri çiz ve güncelle
+            updateObstacles();
+            
+            // Toplanabilir nesneleri çiz ve güncelle
+            updateCollectibles();
+            
+            // Düşmanları çiz ve güncelle
+            updateEnemies();
+            
+            // Oyuncuyu güncelle ve çiz
+            updatePlayer();
+            
+            // İlerlemeyi güncelle
+            updateProgress();
+            
+            // HUD'u çiz
+            drawHUD();
+            
+            // Oyun durumunu kontrol et
+            checkGameState();
+            
+            // Bir sonraki frame için döngüyü devam ettir
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Arka planı çiz
+        function drawBackground() {
+            // Su gradient
+            const waterGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            waterGradient.addColorStop(0, '#1E90FF');
+            waterGradient.addColorStop(1, '#006994');
+            ctx.fillStyle = waterGradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Su dalgaları (yeni)
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < canvas.width; i += 20) {
+                ctx.beginPath();
+                ctx.moveTo(i, canvas.height * 0.6 + Math.sin((i + performance.now() * 0.01) * 0.05) * 5);
+                ctx.lineTo(i + 10, canvas.height * 0.6 + Math.sin((i + 10 + performance.now() * 0.01) * 0.05) * 5);
+                ctx.stroke();
+            }
+
+            // Arka plan elementleri
+            backgroundElements.forEach(element => {
+                ctx.fillStyle = element.color;
+                
+                if (element.type === 'cloud') {
+                    // Bulut çiz
+                    ctx.beginPath();
+                    ctx.arc(element.x, element.y + element.height / 2, element.height / 2, 0, Math.PI * 2);
+                    ctx.arc(element.x + element.width / 3, element.y + element.height / 3, element.height / 2, 0, Math.PI * 2);
+                    ctx.arc(element.x + element.width * 2/3, element.y + element.height / 2, element.height / 2, 0, Math.PI * 2);
+                    ctx.arc(element.x + element.width, element.y + element.height / 2, element.height / 2, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (element.type === 'plant') {
+                    // Su bitkisi çiz
+                    ctx.beginPath();
+                    ctx.moveTo(element.x, element.y + element.height);
+                    ctx.quadraticCurveTo(
+                        element.x + element.width / 2, element.y - element.height / 2,
+                        element.x + element.width, element.y + element.height
+                    );
+                    ctx.fill();
+                }
+            });
+            
+            // Su kabarcıkları
+            waterBubbles.forEach(bubble => {
+                ctx.fillStyle = `rgba(255, 255, 255, ${bubble.opacity})`;
+                ctx.beginPath();
+                ctx.arc(bubble.x, bubble.y, bubble.radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Kabarcıkları hareket ettir
+                bubble.y -= bubble.speed;
+                if (bubble.y < -10) {
+                    bubble.y = canvas.height + Math.random() * 20;
+                    bubble.x = Math.random() * canvas.width * 3;
+                }
+            });
+        }
+        
+        // Platformları güncelle
+        function updatePlatforms() {
+            platforms.forEach(platform => {
+                ctx.fillStyle = platform.color;
+                ctx.fillRect(platform.x - player.x * 0.2, platform.y, platform.width, platform.height);
+                
+                // Platform dokusu
+                ctx.fillStyle = '#A0522D';
+                for (let i = 0; i < platform.width / 20; i++) {
+                    for (let j = 0; j < platform.height / 20; j++) {
+                        if (Math.random() > 0.7) {
+                            ctx.fillRect(
+                                platform.x - player.x * 0.2 + i * 20 + Math.random() * 5, 
+                                platform.y + j * 20 + Math.random() * 5, 
+                                3 + Math.random() * 5, 
+                                3 + Math.random() * 5
+                            );
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Engelleri güncelle
+        function updateObstacles() {
+            obstacles.forEach(obstacle => {
+                const screenX = obstacle.x - player.x * 0.2;
+                
+                if (screenX > -50 && screenX < canvas.width + 50) {
+                    ctx.fillStyle = obstacle.color;
+                    ctx.fillRect(screenX, obstacle.y, obstacle.width, obstacle.height);
+                    
+                    // Şelale efekti (geliştirildi)
+                    if (obstacle.type === 'waterfall') {
+                        ctx.fillStyle = 'rgba(173, 216, 230, 0.7)'; // Açık mavi
+                        for (let i = 0; i < 20; i++) { // Daha fazla damla
+                            const offset = (performance.now() / 50) % 30; // Daha hızlı ve daha geniş hareket
+                            const dropX = screenX + Math.sin((i * 18 + offset) * Math.PI / 180) * 15; // Daha geniş yayılma
+                            const dropY = obstacle.y + (i * 10 + offset) % obstacle.height; // Aşağı doğru hareket
+                            ctx.fillRect(dropX, dropY, 5, 5); // Daha küçük damlalar
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Toplanabilir nesneleri güncelle
+        function updateCollectibles() {
+            for (let i = collectibles.length - 1; i >= 0; i--) {
+                const item = collectibles[i];
+                const screenX = item.x - player.x * 0.2;
+                
+                if (screenX > -30 && screenX < canvas.width + 30) {
+                    // Çiz
+                    ctx.fillStyle = item.color;
+                    ctx.beginPath();
+                    ctx.arc(screenX, item.y, item.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Parlama efekti
+                    if (item.type === 'powerup') {
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.arc(screenX, item.y, item.radius + 3 * Math.sin(performance.now() / 200), 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+                    
+                    // Çarpışma kontrolü
+                    const playerRect = {
+                        x: player.x,
+                        y: player.y,
+                        width: player.width,
+                        height: player.height
+                    };
+                    
+                    const itemRect = {
+                        x: item.x,
+                        y: item.y,
+                        width: item.radius * 2,
+                        height: item.radius * 2
+                    };
+                    
+                    if (checkCollision(playerRect, itemRect)) {
+                        if (item.type === 'food') {
+                            score += 10;
+                        } else {
+                            score += 30;
+                            health = Math.min(health + 1, 5);
+                        }
+                        
+                        collectSound.currentTime = 0;
+                        collectSound.play();
+                        
+                        collectibles.splice(i, 1);
+                        updateHUD();
+                    }
+                }
+            }
+        }
+        
+        // Düşmanları güncelle
+        function updateEnemies() {
+            enemies.forEach(enemy => {
+                const screenX = enemy.x - player.x * 0.2;
+                
+                if (screenX > -50 && screenX < canvas.width + 50) {
+                    // Hareket
+                    enemy.x += enemy.speed * enemy.direction;
+                    
+                    // Yön değiştirme
+                    if (Math.random() < 0.01) {
+                        enemy.direction *= -1;
+                    }
+                    
+                    // Animasyon
+                    enemy.frame = (enemy.frame + 0.1) % enemy.animationSpeed;
+                    if (enemy.type === 'bear') {
+                        enemy.verticalOffset = Math.sin(performance.now() / 150) * 3; // Ayı için dikey hareket
+                    }
+                    
+                    // Çiz
+                    ctx.save();
+                    ctx.translate(screenX + enemy.width / 2, enemy.y + enemy.height / 2 + enemy.verticalOffset);
+                    
+                    if (enemy.direction < 0) {
+                        ctx.scale(-1, 1);
+                        ctx.translate(-enemy.width, 0);
+                    }
+                    
+                    if (enemy.type === 'bird') {
+                        // Kuş çiz
+                        ctx.fillStyle = '#8B0000';
+                        
+                        // Gövde
+                        ctx.beginPath();
+                        ctx.ellipse(0, 0, enemy.width / 2, enemy.height / 3, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // Kafa
+                        ctx.beginPath();
+                        ctx.arc(enemy.width / 4, -enemy.height / 4, enemy.width / 4, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // Gaga
+                        ctx.fillStyle = '#FFD700';
+                        ctx.beginPath();
+                        ctx.moveTo(enemy.width / 3, -enemy.height / 4);
+                        ctx.lineTo(enemy.width / 2 + 5, -enemy.height / 4);
+                        ctx.lineTo(enemy.width / 3, -enemy.height / 6);
+                        ctx.fill();
+                        
+                        // Kanatlar (daha belirgin animasyon)
+                        ctx.fillStyle = '#8B0000';
+                        const wingY = Math.sin(enemy.frame * 0.5) * 10; // Daha geniş kanat çırpma
+                        ctx.beginPath();
+                        ctx.moveTo(-enemy.width / 4, 0);
+                        ctx.quadraticCurveTo(
+                            -enemy.width / 2, wingY - enemy.height / 2,
+                            -enemy.width / 4, -enemy.height / 2
+                        );
+                        ctx.quadraticCurveTo(
+                            0, wingY - enemy.height / 3,
+                            -enemy.width / 4, 0
+                        );
+                        ctx.fill();
+                    } else {
+                        // Ayı çiz
+                        ctx.fillStyle = '#8B4513';
+                        
+                        // Gövde
+                        ctx.beginPath();
+                        ctx.ellipse(0, 0, enemy.width / 2, enemy.height / 2, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // Kafa
+                        ctx.beginPath();
+                        ctx.arc(enemy.width / 3, -enemy.height / 3, enemy.width / 3, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // Kulaklar
+                        ctx.beginPath();
+                        ctx.arc(enemy.width / 3 - 10, -enemy.height / 3 - 10, 8, 0, Math.PI * 2);
+                        ctx.arc(enemy.width / 3 + 10, -enemy.height / 3 - 10, 8, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // Gözler
+                        ctx.fillStyle = 'white';
+                        ctx.beginPath();
+                        ctx.arc(enemy.width / 3 - 5, -enemy.height / 3 - 5, 3, 0, Math.PI * 2);
+                        ctx.arc(enemy.width / 3 + 5, -enemy.height / 3 - 5, 3, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        ctx.fillStyle = 'black';
+                        ctx.beginPath();
+                        ctx.arc(enemy.width / 3 - 5, -enemy.height / 3 - 5, 1.5, 0, Math.PI * 2);
+                        ctx.arc(enemy.width / 3 + 5, -enemy.height / 3 - 5, 1.5, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    
+                    ctx.restore();
+                    
+                    // Çarpışma kontrolü
+                    const playerRect = {
+                        x: enemy.x, // Düşmanın gerçek x konumu
+                        y: enemy.y, // Düşmanın gerçek y konumu
+                        width: enemy.width,
+                        height: enemy.height
+                    };
+                    
+                    const fishRect = {
+                        x: player.x,
+                        y: player.y,
+                        width: player.width,
+                        height: player.height
+                    };
+                    
+                    if (checkCollision(fishRect, playerRect)) {
+                        health--;
+                        hitSound.currentTime = 0;
+                        hitSound.play();
+                        
+                        // Geri tepme efekti
+                        player.dy = -5;
+                        player.x -= 20 * enemy.direction;
+                        
+                        updateHUD();
+                        
+                        // Düşmanı geçici olarak görünmez yap
+                        enemy.x += enemy.direction * 100;
+                    }
+                }
+            });
+        }
+        
+        // Oyuncuyu güncelle
+        function updatePlayer() {
+            // Yerçekimi
+            player.dy += player.gravity;
+            player.y += player.dy;
+            
+            // Klavye kontrolleri
+            if (keys.ArrowLeft) {
+                player.x -= player.speed;
+                player.direction = -1;
+            }
+            if (keys.ArrowRight) {
+                player.x += player.speed;
+                player.direction = 1;
+            }
+            
+            // Yüzme animasyonu ve dönüş
+            player.swimFrame = (player.swimFrame + 0.1) % (Math.PI * 2); // Animasyon çerçevesini güncelle
+            const swimBob = Math.sin(player.swimFrame) * 2; // Hafif yukarı-aşağı hareket
+            const rotationAngle = player.dy * 0.02; // Dikey hıza göre dönüş açısı
+            
+            // Platform çarpışması
+            let onGround = false;
+            platforms.forEach(platform => {
+                // Platformun ekrandaki konumu
+                const platformScreenX = platform.x - player.x * 0.2 + player.x; // Player'ın x'ine göre platformu kaydır
+                const platformRect = {
+                    x: platformScreenX,
+                    y: platform.y,
+                    width: platform.width,
+                    height: platform.height
+                };
+
+                const playerRect = {
+                    x: player.x,
+                    y: player.y,
+                    width: player.width,
+                    height: player.height
+                };
+
+                if (
+                    playerRect.x < platformRect.x + platformRect.width &&
+                    playerRect.x + playerRect.width > platformRect.x &&
+                    playerRect.y + playerRect.height > platformRect.y &&
+                    playerRect.y + playerRect.height < platformRect.y + platformRect.height / 2 &&
+                    player.dy > 0
+                ) {
+                    player.y = platformRect.y - player.height;
+                    player.dy = 0;
+                    player.isJumping = false;
+                    onGround = true;
+                }
+            });
+            
+            // Engel çarpışması
+            obstacles.forEach(obstacle => {
+                // Engelin ekrandaki konumu
+                const obstacleScreenX = obstacle.x - player.x * 0.2 + player.x; // Player'ın x'ine göre engeli kaydır
+                const obstacleRect = {
+                    x: obstacleScreenX,
+                    y: obstacle.y,
+                    width: obstacle.width,
+                    height: obstacle.height
+                };
+
+                const playerRect = {
+                    x: player.x,
+                    y: player.y,
+                    width: player.width,
+                    height: player.height
+                };
+
+                if (checkCollision(playerRect, obstacleRect)) {
+                    if (obstacle.type === 'waterfall') {
+                        // Şelalede aşağı it
+                        player.dy = 5;
+                    }
+                }
+            });
+            
+            // Ekran sınırları
+            if (player.y > canvas.height) {
+                health--;
+                hitSound.currentTime = 0;
+                hitSound.play();
+                player.y = 0; // Ekranın üstüne geri ışınla
+                player.dy = 0;
+                updateHUD();
+            }
+            
+            player.x = Math.max(0, Math.min(player.x, canvas.width * 3 - player.width));
+            
+            // Oyuncuyu çiz
+            ctx.save();
+            ctx.translate(player.x + player.width / 2, player.y + player.height / 2 + swimBob); // Yüzme bobunu ekle
+            
+            if (player.direction < 0) {
+                ctx.scale(-1, 1);
+            }
+            ctx.rotate(rotationAngle); // Dikey hıza göre dönüş
+            ctx.translate(-(player.width / 2), -(player.height / 2)); // Geri çevir
+            
+            // Balık gövdesi
+            ctx.fillStyle = player.color;
+            ctx.beginPath();
+            ctx.ellipse(
+                player.width / 2, 
+                player.height / 2, 
+                player.width / 2, 
+                player.height / 2, 
+                0, 
+                0, 
+                Math.PI * 2
+            );
+            ctx.fill();
+            
+            // Kuyruk
+            ctx.beginPath();
+            ctx.moveTo(0, player.height / 2);
+            ctx.quadraticCurveTo(
+                -player.width / 3, player.height / 2 - player.height / 4,
+                -player.width / 3, player.height
+            );
+            ctx.quadraticCurveTo(
+                -player.width / 3, player.height / 2 + player.height / 4,
+                0, player.height / 2
+            );
+            ctx.fill();
+            
+            // Göz
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(
+                player.width * 0.7, 
+                player.height * 0.3, 
+                player.width * 0.1, 
+                0, 
+                Math.PI * 2
+            );
+            ctx.fill();
+            
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(
+                player.width * 0.7, 
+                player.height * 0.3, 
+                player.width * 0.05, 
+                0, 
+                Math.PI * 2
+            );
+            ctx.fill();
+            
+            // Solungaçlar
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 3; i++) {
+                ctx.beginPath();
+                ctx.arc(
+                    player.width * 0.6 + i * 2, 
+                    player.height * 0.5, 
+                    player.width * 0.15, 
+                    Math.PI / 2, 
+                    Math.PI * 3 / 2
+                );
+                ctx.stroke();
+            }
+            
+            ctx.restore();
+        }
+        
+        // İlerlemeyi güncelle
+        function updateProgress() {
+            // Oyuncunun x konumu ile oyunun toplam genişliği arasındaki orana göre ilerlemeyi hesapla
+            progress = (player.x / (canvas.width * 3 - player.width)) * 100;
+            progress = Math.min(100, Math.max(0, progress)); // 0-100 arasında tut
+            updateHUD();
+        }
+        
+        // HUD'u çiz (zaten updateHUD içinde yapılıyor, burada sadece bir yer tutucu)
+        function drawHUD() {
+            // HUD elementleri DOM tarafından yönetildiği için burada çizim yapılmaz.
+            // updateHUD() fonksiyonu DOM elementlerini günceller.
+        }
+        
+        // Oyun durumunu kontrol et
+        function checkGameState() {
+            if (health <= 0) {
+                gameRunning = false;
+                backgroundMusic.pause();
+                gameOverScreen.style.display = 'flex';
+                finalScoreDisplay.textContent = score;
+                finalLevelDisplay.textContent = level;
+            } else if (progress >= 99.9) { // Seviye tamamlama eşiği
+                gameRunning = false;
+                backgroundMusic.pause();
+                levelCompleteSound.currentTime = 0;
+                levelCompleteSound.play();
+                levelCompleteScreen.style.display = 'flex';
+                completedLevelDisplay.textContent = level;
+                currentScoreDisplay.textContent = score;
+            }
+        }
+
+        // Markdown'ı HTML'e dönüştüren basit bir fonksiyon
+        function markdownToHtml(markdown) {
+            let html = markdown
+                .replace(/^# (.*$)/gim, '<h1>$1</h1>') // H1
+                .replace(/^## (.*$)/gim, '<h2>$1</h2>') // H2
+                .replace(/^\* (.*$)/gim, '<li>$1</li>') // List items
+                .replace(/^(?!<h|<li).*$/gim, '<p>$&</p>') // Paragraphs (if not already a heading or list item)
+                .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>'); // Bold
+
+            // Listeleri düzeltmek için ek işlem
+            html = html.replace(/<\/li>\n<li>/g, '</li><li>'); // Ardışık listeleri birleştir
+            html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>'); // Listeleri ul içine al
+
+            return html;
+        }
+
+        // Nasıl Oynanır metnini yükle
+        const howToPlayMarkdown = `
+# Nasıl Oynanır: Yukarıya Yolculuk
+
+"Yukarıya Yolculuk: Anadrom Balıkların Göçü" oyununa hoş geldin! Bu oyunda, doğduğun nehre geri dönmek ve neslini devam ettirmek için zorlu bir göç yolculuğuna çıkan bir balığı kontrol ediyorsun.
+
+## Oyunun Amacı
+
+Amacın, nehrin sonuna ulaşarak seviyeyi tamamlamak ve bir sonraki seviyeye geçmek. Bunu yaparken **canını korumalı**, **puan toplamalı** ve **engellerden kaçınmalısın**.
+
+## Kontroller
+
+Balığını kontrol etmek çok kolay:
+
+* **Hareket Etmek:**
+  * **Sol Ok Tuşu** veya **A Tuşu**: Balığını sola hareket ettir.
+  * **Sağ Ok Tuşu** veya **D Tuşu**: Balığını sağa hareket ettir.
+* **Zıplamak:**
+  * **Yukarı Ok Tuşu**, **Boşluk Tuşu** veya **Ekrana Tıklama**: Balığını zıplat. Şelaleler gibi yüksek engelleri aşmak için zıplaman gerekecek!
+
+## Oyun İpuçları
+
+* **Yiyecekleri Topla:** Nehirde yüzen **yeşil yiyecekleri** toplayarak puan kazan.
+* **Güçlendirmeleri Kaçırma:** **Sarı güçlendirmeler** sana daha fazla puan kazandırır ve canını artırır. Onları mutlaka topla!
+* **Düşmanlardan Kaçın:** Nehirde avlanan **kuşlar** ve **ayılar** sana zarar verebilir. Onlara çarpmamaya dikkat et! Bir düşmana çarptığında canın azalır ve kısa süreliğine geri tepersin.
+* **Şelalelere Dikkat:** Şelaleler seni aşağı doğru itebilir. Doğru zamanda zıplayarak onları aşmalısın.
+* **İlerleme Çubuğu:** Ekranın altındaki ilerleme çubuğu, seviyenin ne kadarını tamamladığını gösterir. Hedefine ulaşmak için ilerlemeye devam et!
+
+Canın sıfıra düştüğünde göçün başarısız olur ve oyun biter. Ancak her zaman yeniden deneyebilirsin!
+
+İyi eğlenceler ve göçünde başarılar dilerim!
+        `;
+        howToPlayContent.innerHTML = markdownToHtml(howToPlayMarkdown);
+
+        // Sayfa yüklendiğinde oyunu başlatma
+        window.onload = function() {
+            // Müzik otomatik oynatma kısıtlamaları nedeniyle,
+            // kullanıcı etkileşimi olmadan müzik başlamayabilir.
+            // Bu yüzden "Başla" butonuna basıldığında çalmasını sağlıyoruz.
+        };
+    </script>
+</body>
+</html>
